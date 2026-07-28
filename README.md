@@ -1,6 +1,6 @@
 # Jar Pet Arduino Project
 
-Arduino firmware for the Jar Pet project. The firmware drives a 15x5 strip-backed LED matrix, reads a tap sensor, and toggles the selected animation on and off.
+Arduino firmware for a 15x5 strip-backed LED matrix with a tap sensor. It runs an idle animation, temporarily switches to a sensor animation after a tap, then returns to idle. After five minutes without a tap, the matrix clears; the next tap wakes it.
 
 ## Firmware Structure
 
@@ -19,23 +19,25 @@ Current defaults:
 - Matrix size: `15` columns by `5` rows
 - Matrix origin: `(0, 0)` is the bottom-left LED, strip pixel `0`
 
-## Selecting An Animation
+## Selecting Animations
 
-The main sketch hardcodes the selected animation:
-
-```cpp
-#include "animations/Rainbow.h"
-
-const MatrixAnimation &selectedAnimation = RainbowAnimation;
-```
-
-To use a different animation, include its header and assign its exported `MatrixAnimation` object:
+The main sketch has two interchangeable animation slots:
 
 ```cpp
-#include "animations/Heart.h"
-
-const MatrixAnimation &selectedAnimation = HeartAnimation;
+const MatrixAnimation &idleAnimation = FaceAnimation;
+const MatrixAnimation &sensorAnimation = HappyFaceAnimation;
 ```
+
+The supplied headers are already included in `jar_pet.ino`, so swap either line to select a different built-in animation. For example, use Rainbow while idle and retain the happy face for taps:
+
+```cpp
+const MatrixAnimation &idleAnimation = RainbowAnimation;
+const MatrixAnimation &sensorAnimation = HappyFaceAnimation;
+```
+
+You can use the same animation in both slots, such as `RainbowAnimation`, or mix any exported `MatrixAnimation` from `firmware/jar_pet/animations/`. When adding a new animation, include its header in `jar_pet.ino`, then assign its exported animation object to either slot.
+
+The sensor response length and inactivity timeout are set in `config.h` as `SENSOR_ANIMATION_DURATION_MS` and `MATRIX_IDLE_TIMEOUT_MS`.
 
 ## Creating An Animation
 
