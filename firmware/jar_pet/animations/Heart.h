@@ -1,48 +1,50 @@
 #ifndef HEART_H
 #define HEART_H
 
-#include "../FramePlayer.h"
+#include "../MatrixAnimation.h"
 
-const MatrixFrame HeartFrames[] PROGMEM = {
+const GlyphAnimationFrame HeartFrames[] = {
   {
     180,
     {
-      "..........",
-      ".RR..RR...",
-      "RRRRRRRR..",
-      "RRRRRRRR..",
-      ".RRRRRR...",
-      "..RRRR...."
+      "...............",
+      "......R.R......",
+      ".....RRRRR.....",
+      ".......R.......",
+      "..............."
     }
   },
   {
     140,
     {
-      "..........",
-      ".MM..MM...",
-      "MMMMMMMM..",
-      "MMMMMMMM..",
-      ".MMMMMM...",
-      "..MMMM...."
-    }
-  },
-  {
-    220,
-    {
-      "..........",
-      "..R..R....",
-      ".RRRRRR...",
-      ".RRRRRR...",
-      "..RRRR....",
-      "...RR....."
+      ".....RR.RR.....",
+      "....RRR.RRR....",
+      ".....RRRRR.....",
+      ".....RRRRR.....",
+      "......RRR......"
     }
   }
 };
 
-const Animation Heart = {
+const uint8_t HeartFrameCount = sizeof(HeartFrames) / sizeof(HeartFrames[0]);
+static uint8_t HeartFrameIndex = 0;
+
+static void resetHeart() {
+  HeartFrameIndex = 0;
+}
+
+static unsigned long drawHeartFrame(LedMatrix &matrix) {
+  const GlyphAnimationFrame &frame = HeartFrames[HeartFrameIndex];
+  drawGlyphFrame(matrix, frame);
+
+  HeartFrameIndex = (HeartFrameIndex + 1) % HeartFrameCount;
+  return frame.durationMs;
+}
+
+const MatrixAnimation HeartAnimation = {
   "Heart",
-  HeartFrames,
-  sizeof(HeartFrames) / sizeof(HeartFrames[0])
+  resetHeart,
+  drawHeartFrame
 };
 
 #endif

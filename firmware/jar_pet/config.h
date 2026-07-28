@@ -9,7 +9,9 @@ const int TAP_RESET_THRESHOLD = 100;
 const unsigned long SENSOR_LOG_INTERVAL_MS = 250;
 
 const uint8_t LED_STRIP_PIN = 9;
-const uint16_t LED_STRIP_COUNT = 100;
+const uint8_t LED_MATRIX_WIDTH = 15;
+const uint8_t LED_MATRIX_HEIGHT = 5;
+const uint16_t LED_STRIP_COUNT = LED_MATRIX_WIDTH * LED_MATRIX_HEIGHT;
 const uint8_t LED_STRIP_BRIGHTNESS = 35;
 const unsigned long LED_ANIMATION_FRAME_MS = 20;
 

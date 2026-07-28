@@ -1,103 +1,77 @@
 # Jar Pet Arduino Project
 
-Arduino firmware for the Jar Pet project, with a small Wokwi/browser matrix harness for experimenting with display animation data.
+Arduino firmware for the Jar Pet project. The firmware drives a 15x5 strip-backed LED matrix, reads a tap sensor, and toggles the selected animation on and off.
 
-The real firmware is kept under `firmware/jar_pet/`. The Wokwi sketch is a simulator target that includes shared firmware headers instead of owning a separate implementation.
+## Firmware Structure
 
-## Run The Browser Preview
-
-```sh
-npm start
-```
-
-Open `http://localhost:4173`.
-
-The server binds to `0.0.0.0` by default, so other devices on the same network can open it with this machine's LAN IP:
-
-```sh
-hostname -I
-```
-
-Then visit `http://<lan-ip>:4173` from the other device.
-
-## Project Structure
-
-Firmware:
-
-- `firmware/jar_pet/jar_pet.ino` is the primary Arduino sketch.
-- `firmware/jar_pet/config.h` contains the real firmware pin, threshold, timing, and brightness settings.
-- `firmware/jar_pet/MatrixTools.h` contains reusable matrix constants and helpers.
-- `firmware/jar_pet/FramePlayer.h` renders frame-grid animation data.
+- `firmware/jar_pet/jar_pet.ino` is the primary Arduino sketch to open in Arduino IDE.
+- `firmware/jar_pet/config.h` contains pin, sensor threshold, timing, matrix size, and brightness settings.
+- `firmware/jar_pet/LedMatrix.h` maps the physical LED strip into `(x, y)` matrix coordinates.
+- `firmware/jar_pet/MatrixAnimation.h` defines the shared animation interface and glyph-frame helpers.
 - `firmware/jar_pet/animations/` contains one standalone animation header per animation.
 
-Wokwi simulator target:
+## Hardware Settings
 
-- `wokwi/sketch.ino` is a thin simulator sketch that includes shared headers from `firmware/jar_pet/`.
-- `wokwi/config.h` contains Wokwi-specific matrix pin and size settings.
-- `wokwi/diagram.json` defines an Arduino Uno connected to a 6x10 Wokwi WS2812 LED matrix on pin 6.
-- `wokwi/libraries.txt` declares the Adafruit NeoPixel dependency for Wokwi.
+Current defaults:
 
-Browser preview:
+- Tap sensor: `A0`
+- LED strip data pin: `9`
+- Matrix size: `15` columns by `5` rows
+- Matrix origin: `(0, 0)` is the bottom-left LED, strip pixel `0`
 
-- `server.js` serves the preview UI and source files.
-- `public/app.js` controls timing, playback, file tabs, and animation selection.
-- `public/matrix-renderer.js` owns the 6x10 pixel buffer and DOM rendering.
-- `public/frame-player.js` parses Arduino animation headers for the browser preview.
-- `public/animation-manifest.js` lists the animation headers loaded by the browser.
-- `public/matrix-config.js` contains the browser matrix size.
+## Selecting An Animation
 
-## Designing An Animation
-
-Every animation is a list of frames. Each frame has a duration in milliseconds and six rows of ten characters. Each character is one LED.
-
-Available color characters:
-
-- `.` off
-- `R` red
-- `G` green
-- `B` blue
-- `Y` yellow
-- `C` cyan
-- `M` magenta
-- `W` white
-- `O` orange
-- `P` purple
-
-Create one header per animation in `firmware/jar_pet/animations/`:
+The main sketch hardcodes the selected animation:
 
 ```cpp
-#ifndef SMILE_H
-#define SMILE_H
+#include "animations/Rainbow.h"
 
-#include "../FramePlayer.h"
+const MatrixAnimation &selectedAnimation = RainbowAnimation;
+```
 
-const MatrixFrame SmileFrames[] PROGMEM = {
-  {
-    160,
-    {
-      "..........",
-      "..Y....Y..",
-      "..........",
-      ".Y......Y.",
-      "..YYYYYY..",
-      ".........."
-    }
+To use a different animation, include its header and assign its exported `MatrixAnimation` object:
+
+```cpp
+#include "animations/Heart.h"
+
+const MatrixAnimation &selectedAnimation = HeartAnimation;
+```
+
+## Creating An Animation
+
+Create one header per animation in `firmware/jar_pet/animations/`. Include `../MatrixAnimation.h`, define a reset function, define a draw function that returns the delay until the next frame, and expose a `const MatrixAnimation`.
+
+```cpp
+#ifndef SCAN_H
+#define SCAN_H
+
+#include "../MatrixAnimation.h"
+
+static uint8_t ScanX = 0;
+
+static void resetScan() {
+  ScanX = 0;
+}
+
+static unsigned long drawScanFrame(LedMatrix &matrix) {
+  matrix.clear();
+
+  for (uint8_t y = 0; y < matrix.height(); y++) {
+    matrix.setPixel(ScanX, y, matrix.color(0, 0, 255));
   }
-};
 
-const Animation Smile = {
-  "Smile",
-  SmileFrames,
-  sizeof(SmileFrames) / sizeof(SmileFrames[0])
+  matrix.show();
+  ScanX = (ScanX + 1) % matrix.width();
+  return 40;
+}
+
+const MatrixAnimation ScanAnimation = {
+  "Scan",
+  resetScan,
+  drawScanFrame
 };
 
 #endif
 ```
 
-Then:
-
-- Include it in `wokwi/sketch.ino` while the matrix harness lives there.
-- Add it to the `animations[]` array in `wokwi/sketch.ino`.
-- Add its path to `public/animation-manifest.js` so the browser preview loads it.
-
-The animation headers are shared by Arduino/Wokwi code and the browser preview, so they remain the source of truth.
+For hardcoded glyph frames, use `GlyphAnimationFrame` and `drawGlyphFrame()` from `MatrixAnimation.h`. Rows are written top-to-bottom, and each row should be 15 characters wide.

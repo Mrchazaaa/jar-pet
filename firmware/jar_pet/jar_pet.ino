@@ -1,6 +1,12 @@
 #include <Adafruit_TinyUSB.h>
 #include <Adafruit_NeoPixel.h>
 #include "config.h"
+#include "LedMatrix.h"
+#include "MatrixAnimation.h"
+#include "animations/Rainbow.h"
+#include "animations/Heart.h"
+#include "animations/DiagonalSweep.h"
+#include "animations/Sparkle.h"
 
 Adafruit_NeoPixel onboardPixel(
   STATUS_PIXEL_COUNT,
@@ -14,26 +20,28 @@ Adafruit_NeoPixel ledStrip(
   NEO_GRB + NEO_KHZ800
 );
 
+LedMatrix ledMatrix(ledStrip);
+const MatrixAnimation &selectedAnimation = HeartAnimation;
+
 bool stripEnabled = false;
 bool sensorArmed = true;
 
 unsigned long lastSensorLogAt = 0;
-unsigned long nextStripFrameAt = 0;
-uint16_t rainbowOffset = 0;
+unsigned long nextAnimationFrameAt = 0;
 
 void turnOffOnboardLed() {
   onboardPixel.clear();
   onboardPixel.show();
 }
 
-void clearLedStrip() {
-  ledStrip.clear();
-  ledStrip.show();
+void clearLedMatrix() {
+  ledMatrix.clear();
+  ledMatrix.show();
 }
 
-void resetLedAnimation() {
-  nextStripFrameAt = 0;
-  rainbowOffset = 0;
+void resetSelectedAnimation() {
+  nextAnimationFrameAt = 0;
+  resetAnimation(selectedAnimation);
 }
 
 void logStripState() {
@@ -45,10 +53,11 @@ void setStripEnabled(bool enabled) {
   stripEnabled = enabled;
 
   if (stripEnabled) {
-    resetLedAnimation();
-    Serial.println("LED strip enabled");
+    resetSelectedAnimation();
+    Serial.print("LED strip enabled, animation=");
+    Serial.println(selectedAnimation.name);
   } else {
-    clearLedStrip();
+    clearLedMatrix();
     Serial.println("LED strip disabled");
   }
 
@@ -89,27 +98,12 @@ void updateTapToggle(int sensorValue) {
   }
 }
 
-void drawRainbowFrame() {
-  for (uint16_t i = 0; i < ledStrip.numPixels(); i++) {
-    const uint16_t hue = static_cast<uint16_t>(
-      (static_cast<uint32_t>(i) * 65536UL / ledStrip.numPixels()) +
-      (static_cast<uint32_t>(rainbowOffset) * 256UL)
-    );
-
-    ledStrip.setPixelColor(i, ledStrip.gamma32(ledStrip.ColorHSV(hue)));
-  }
-
-  ledStrip.show();
-  rainbowOffset++;
-}
-
 void updateLedAnimation(unsigned long now) {
-  if (!stripEnabled || now < nextStripFrameAt) {
+  if (!stripEnabled || now < nextAnimationFrameAt) {
     return;
   }
 
-  drawRainbowFrame();
-  nextStripFrameAt = now + LED_ANIMATION_FRAME_MS;
+  nextAnimationFrameAt = now + drawAnimationFrame(selectedAnimation, ledMatrix);
 }
 
 void setup() {
@@ -120,11 +114,9 @@ void setup() {
   onboardPixel.setBrightness(STATUS_PIXEL_BRIGHTNESS);
   turnOffOnboardLed();
 
-  ledStrip.begin();
-  ledStrip.setBrightness(LED_STRIP_BRIGHTNESS);
-  clearLedStrip();
+  ledMatrix.begin(LED_STRIP_BRIGHTNESS);
 
-  Serial.println("Jar Pet tap LED strip toggle started");
+  Serial.println("Jar Pet tap LED matrix toggle started");
   Serial.print("tap pin=");
   Serial.print(TAP_SENSOR_PIN);
   Serial.print(" hit threshold=");
@@ -133,8 +125,14 @@ void setup() {
   Serial.println(TAP_RESET_THRESHOLD);
   Serial.print("strip pin=");
   Serial.print(LED_STRIP_PIN);
+  Serial.print(" matrix=");
+  Serial.print(LED_MATRIX_WIDTH);
+  Serial.print("x");
+  Serial.print(LED_MATRIX_HEIGHT);
   Serial.print(" count=");
   Serial.println(LED_STRIP_COUNT);
+  Serial.print("selected animation=");
+  Serial.println(selectedAnimation.name);
 }
 
 void loop() {
