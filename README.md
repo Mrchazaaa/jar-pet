@@ -1,8 +1,10 @@
-# Wokwi 6x10 RGB Matrix
+# Jar Pet Arduino Project
 
-Static web project for a 6 row by 10 column RGB LED matrix animation. The Arduino sketch and Wokwi circuit files live in `wokwi/`; the served page reads the same Arduino animation headers so it can preview the animation immediately in a browser.
+Arduino firmware for the Jar Pet project, with a small Wokwi/browser matrix harness for experimenting with display animation data.
 
-## Run
+The real firmware is kept under `firmware/jar_pet/`. The Wokwi sketch is a simulator target that includes shared firmware headers instead of owning a separate implementation.
+
+## Run The Browser Preview
 
 ```sh
 npm start
@@ -18,28 +20,31 @@ hostname -I
 
 Then visit `http://<lan-ip>:4173` from the other device.
 
-## Wokwi Files
+## Project Structure
 
-- `wokwi/sketch.ino` contains the Arduino Uno NeoPixel animation sketch.
+Firmware:
+
+- `firmware/jar_pet/jar_pet.ino` is the primary Arduino sketch.
+- `firmware/jar_pet/config.h` contains the real firmware pin, threshold, timing, and brightness settings.
+- `firmware/jar_pet/MatrixTools.h` contains reusable matrix constants and helpers.
+- `firmware/jar_pet/FramePlayer.h` renders frame-grid animation data.
+- `firmware/jar_pet/animations/` contains one standalone animation header per animation.
+
+Wokwi simulator target:
+
+- `wokwi/sketch.ino` is a thin simulator sketch that includes shared headers from `firmware/jar_pet/`.
+- `wokwi/config.h` contains Wokwi-specific matrix pin and size settings.
 - `wokwi/diagram.json` defines an Arduino Uno connected to a 6x10 Wokwi WS2812 LED matrix on pin 6.
 - `wokwi/libraries.txt` declares the Adafruit NeoPixel dependency for Wokwi.
 
-## Project Structure
-
 Browser preview:
 
+- `server.js` serves the preview UI and source files.
 - `public/app.js` controls timing, playback, file tabs, and animation selection.
 - `public/matrix-renderer.js` owns the 6x10 pixel buffer and DOM rendering.
 - `public/frame-player.js` parses Arduino animation headers for the browser preview.
 - `public/animation-manifest.js` lists the animation headers loaded by the browser.
-- `public/matrix-config.js` contains the shared browser matrix size.
-
-Wokwi/Arduino:
-
-- `wokwi/sketch.ino` controls setup, timing, and animation selection.
-- `wokwi/MatrixTools.h` contains shared matrix constants and helpers.
-- `wokwi/FramePlayer.h` renders frame-grid animation data.
-- `wokwi/Heart.h`, `wokwi/DiagonalSweep.h`, etc. contain one standalone animation per file.
+- `public/matrix-config.js` contains the browser matrix size.
 
 ## Designing An Animation
 
@@ -58,13 +63,13 @@ Available color characters:
 - `O` orange
 - `P` purple
 
-Create one header per animation in `wokwi/`:
+Create one header per animation in `firmware/jar_pet/animations/`:
 
 ```cpp
 #ifndef SMILE_H
 #define SMILE_H
 
-#include "FramePlayer.h"
+#include "../FramePlayer.h"
 
 const MatrixFrame SmileFrames[] PROGMEM = {
   {
@@ -91,8 +96,8 @@ const Animation Smile = {
 
 Then:
 
-- Include it in `wokwi/sketch.ino`.
+- Include it in `wokwi/sketch.ino` while the matrix harness lives there.
 - Add it to the `animations[]` array in `wokwi/sketch.ino`.
 - Add its path to `public/animation-manifest.js` so the browser preview loads it.
 
-The browser reads these same `.h` files, so the Arduino data is the source of truth.
+The animation headers are shared by Arduino/Wokwi code and the browser preview, so they remain the source of truth.

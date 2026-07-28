@@ -1,5 +1,5 @@
 export const animationFiles = [
-  "/wokwi/Heart.h",
-  "/wokwi/DiagonalSweep.h",
-  "/wokwi/Sparkle.h"
+  "/firmware/jar_pet/animations/Heart.h",
+  "/firmware/jar_pet/animations/DiagonalSweep.h",
+  "/firmware/jar_pet/animations/Sparkle.h"
 ];

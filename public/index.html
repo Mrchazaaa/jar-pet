@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <title>Wokwi 6x10 RGB Matrix</title>
+    <title>Jar Pet Matrix Preview</title>
     <link rel="stylesheet" href="/public/styles.css">
   </head>
   <body>
@@ -11,8 +11,8 @@
       <section class="sim-panel" aria-label="RGB LED matrix simulator">
         <div class="topbar">
           <div>
-            <h1>6x10 RGB Matrix</h1>
-            <p>Arduino Uno sketch for a Wokwi WS2812 matrix on pin 6.</p>
+            <h1>Jar Pet Preview</h1>
+            <p>Firmware-first Arduino project with a Wokwi matrix harness on pin 6.</p>
           </div>
           <div class="run-state" aria-live="polite">
             <span class="pulse"></span>
@@ -40,12 +40,15 @@
 
       <aside class="code-panel" aria-label="Arduino sketch and Wokwi files">
         <div class="tabs" role="tablist" aria-label="Project files">
-          <button class="tab active" type="button" data-file="/wokwi/sketch.ino">sketch.ino</button>
-          <button class="tab" type="button" data-file="/wokwi/MatrixTools.h">MatrixTools.h</button>
-          <button class="tab" type="button" data-file="/wokwi/FramePlayer.h">FramePlayer.h</button>
-          <button class="tab" type="button" data-file="/wokwi/Heart.h">Heart.h</button>
-          <button class="tab" type="button" data-file="/wokwi/DiagonalSweep.h">DiagonalSweep.h</button>
-          <button class="tab" type="button" data-file="/wokwi/Sparkle.h">Sparkle.h</button>
+          <button class="tab active" type="button" data-file="/firmware/jar_pet/jar_pet.ino">jar_pet.ino</button>
+          <button class="tab" type="button" data-file="/firmware/jar_pet/config.h">firmware config.h</button>
+          <button class="tab" type="button" data-file="/wokwi/sketch.ino">wokwi sketch.ino</button>
+          <button class="tab" type="button" data-file="/wokwi/config.h">wokwi config.h</button>
+          <button class="tab" type="button" data-file="/firmware/jar_pet/MatrixTools.h">MatrixTools.h</button>
+          <button class="tab" type="button" data-file="/firmware/jar_pet/FramePlayer.h">FramePlayer.h</button>
+          <button class="tab" type="button" data-file="/firmware/jar_pet/animations/Heart.h">Heart.h</button>
+          <button class="tab" type="button" data-file="/firmware/jar_pet/animations/DiagonalSweep.h">DiagonalSweep.h</button>
+          <button class="tab" type="button" data-file="/firmware/jar_pet/animations/Sparkle.h">Sparkle.h</button>
           <button class="tab" type="button" data-file="/wokwi/diagram.json">diagram.json</button>
           <button class="tab" type="button" data-file="/wokwi/libraries.txt">libraries.txt</button>
         </div>

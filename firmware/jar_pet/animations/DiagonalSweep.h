@@ -1,7 +1,7 @@
 #ifndef DIAGONAL_SWEEP_H
 #define DIAGONAL_SWEEP_H
 
-#include "FramePlayer.h"
+#include "../FramePlayer.h"
 
 const MatrixFrame DiagonalSweepFrames[] PROGMEM = {
   {

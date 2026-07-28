@@ -1,7 +1,7 @@
 #ifndef HEART_H
 #define HEART_H
 
-#include "FramePlayer.h"
+#include "../FramePlayer.h"
 
 const MatrixFrame HeartFrames[] PROGMEM = {
   {

@@ -1,9 +1,10 @@
 #include <Adafruit_NeoPixel.h>
-#include "MatrixTools.h"
-#include "FramePlayer.h"
-#include "Heart.h"
-#include "DiagonalSweep.h"
-#include "Sparkle.h"
+#include "config.h"
+#include "../firmware/jar_pet/MatrixTools.h"
+#include "../firmware/jar_pet/FramePlayer.h"
+#include "../firmware/jar_pet/animations/Heart.h"
+#include "../firmware/jar_pet/animations/DiagonalSweep.h"
+#include "../firmware/jar_pet/animations/Sparkle.h"
 
 Adafruit_NeoPixel matrix(NUM_PIXELS, MATRIX_PIN, NEO_GRB + NEO_KHZ800);
 

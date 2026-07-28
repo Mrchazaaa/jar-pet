@@ -1,9 +1,10 @@
 {
-  "name": "jar-pet-wokwi-matrix",
+  "name": "jar-pet",
   "version": "1.0.0",
   "private": true,
   "type": "module",
   "scripts": {
-    "start": "node server.js"
+    "start": "node server.js",
+    "preview:matrix": "node server.js"
   }
 }

@@ -16,7 +16,7 @@ struct Animation {
   uint8_t frameCount;
 };
 
-uint32_t colorForGlyph(char glyph) {
+inline uint32_t colorForGlyph(char glyph) {
   switch (glyph) {
     case 'R': return matrix.Color(255, 0, 0);
     case 'G': return matrix.Color(0, 255, 0);
@@ -31,11 +31,11 @@ uint32_t colorForGlyph(char glyph) {
   }
 }
 
-uint16_t frameDuration(const MatrixFrame *frames, uint8_t index) {
+inline uint16_t frameDuration(const MatrixFrame *frames, uint8_t index) {
   return pgm_read_word(&(frames[index].durationMs));
 }
 
-void drawFrame(const MatrixFrame *frames, uint8_t index) {
+inline void drawFrame(const MatrixFrame *frames, uint8_t index) {
   clearMatrix();
 
   for (uint8_t y = 0; y < MATRIX_HEIGHT; y++) {

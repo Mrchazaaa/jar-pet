@@ -99,6 +99,6 @@ tabs.forEach((tab) => {
   });
 });
 
-loadCode("/wokwi/sketch.ino");
+loadCode("/firmware/jar_pet/jar_pet.ino");
 initAnimations();
 requestAnimationFrame(loop);

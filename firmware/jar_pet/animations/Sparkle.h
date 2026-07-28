@@ -1,7 +1,7 @@
 #ifndef SPARKLE_H
 #define SPARKLE_H
 
-#include "FramePlayer.h"
+#include "../FramePlayer.h"
 
 const MatrixFrame SparkleFrames[] PROGMEM = {
   {
