@@ -7,6 +7,7 @@
 #include "animations/Heart.h"
 #include "animations/DiagonalSweep.h"
 #include "animations/Sparkle.h"
+#include "animations/VerticalSweep.h"
 
 Adafruit_NeoPixel onboardPixel(
   STATUS_PIXEL_COUNT,
@@ -21,7 +22,7 @@ Adafruit_NeoPixel ledStrip(
 );
 
 LedMatrix ledMatrix(ledStrip);
-const MatrixAnimation &selectedAnimation = HeartAnimation;
+const MatrixAnimation &selectedAnimation = VerticalSweepAnimation;
 
 bool stripEnabled = false;
 bool sensorArmed = true;
