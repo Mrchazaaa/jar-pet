@@ -29,7 +29,7 @@ static unsigned long drawDiagonalSweepFrame(LedMatrix &matrix) {
 
   matrix.show();
   DiagonalSweepOffset = (DiagonalSweepOffset + 1) % matrix.width();
-  return 90;
+  return 30;
 }
 
 const MatrixAnimation DiagonalSweepAnimation = {

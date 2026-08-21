@@ -33,7 +33,7 @@ static unsigned long drawVerticalSweepFrame(LedMatrix &matrix) {
   matrix.show();
   VerticalSweepX = (VerticalSweepX + 1) % matrix.width();
   VerticalSweepHueOffset += 1024;
-  return 55;
+  return 20;
 }
 
 const MatrixAnimation VerticalSweepAnimation = {
