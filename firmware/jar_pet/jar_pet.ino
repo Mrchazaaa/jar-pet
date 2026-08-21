@@ -8,6 +8,7 @@
 #include "animations/DiagonalSweep.h"
 #include "animations/Sparkle.h"
 #include "animations/VerticalSweep.h"
+#include "animations/BarbershopPole.h"
 
 Adafruit_NeoPixel onboardPixel(
   STATUS_PIXEL_COUNT,
@@ -22,13 +23,33 @@ Adafruit_NeoPixel ledStrip(
 );
 
 LedMatrix ledMatrix(ledStrip);
-const MatrixAnimation &selectedAnimation = VerticalSweepAnimation;
+const MatrixAnimation *const Animations[] = {
+  &RainbowAnimation,
+  &HeartAnimation,
+  &DiagonalSweepAnimation,
+  &SparkleAnimation,
+  &VerticalSweepAnimation,
+  &BarbershopPoleAnimation
+};
+const uint8_t AnimationCount = static_cast<uint8_t>(
+  sizeof(Animations) / sizeof(Animations[0])
+);
+uint8_t selectedAnimationIndex = 4;
 
 bool stripEnabled = false;
 bool sensorArmed = true;
+bool tapResetPending = false;
+bool singleTapPending = false;
 
 unsigned long lastSensorLogAt = 0;
+unsigned long lastTapDetectedAt = 0;
+unsigned long tapResetStartedAt = 0;
+unsigned long singleTapDetectedAt = 0;
 unsigned long nextAnimationFrameAt = 0;
+
+const MatrixAnimation &currentAnimation() {
+  return *Animations[selectedAnimationIndex];
+}
 
 void turnOffOnboardLed() {
   onboardPixel.clear();
@@ -42,7 +63,7 @@ void clearLedMatrix() {
 
 void resetSelectedAnimation() {
   nextAnimationFrameAt = 0;
-  resetAnimation(selectedAnimation);
+  resetAnimation(currentAnimation());
 }
 
 void logStripState() {
@@ -56,7 +77,7 @@ void setStripEnabled(bool enabled) {
   if (stripEnabled) {
     resetSelectedAnimation();
     Serial.print("LED strip enabled, animation=");
-    Serial.println(selectedAnimation.name);
+    Serial.println(currentAnimation().name);
   } else {
     clearLedMatrix();
     Serial.println("LED strip disabled");
@@ -80,23 +101,76 @@ void logSensorReading(unsigned long now, int sensorValue) {
   Serial.println(stripEnabled ? "on" : "off");
 }
 
-void updateTapToggle(int sensorValue) {
-  if (sensorArmed && sensorValue >= TAP_HIT_THRESHOLD) {
-    sensorArmed = false;
+void skipToNextAnimation() {
+  selectedAnimationIndex = (selectedAnimationIndex + 1) % AnimationCount;
+  resetSelectedAnimation();
 
-    Serial.print("Tap detected, sensor=");
-    Serial.println(sensorValue);
+  Serial.print("Skipped to animation=");
+  Serial.println(currentAnimation().name);
+}
 
-    setStripEnabled(!stripEnabled);
+void handleTapDetected(unsigned long now, int sensorValue) {
+  Serial.print("Tap detected, sensor=");
+  Serial.println(sensorValue);
+
+  if (singleTapPending && now - singleTapDetectedAt <= TAP_DOUBLE_TAP_MS) {
+    singleTapPending = false;
+
+    Serial.println("Double tap detected");
+    skipToNextAnimation();
     return;
   }
 
-  if (!sensorArmed && sensorValue <= TAP_RESET_THRESHOLD) {
-    sensorArmed = true;
+  singleTapPending = true;
+  singleTapDetectedAt = now;
+}
 
-    Serial.print("Sensor rearmed, sensor=");
-    Serial.println(sensorValue);
+void updatePendingSingleTap(unsigned long now) {
+  if (!singleTapPending || now - singleTapDetectedAt <= TAP_DOUBLE_TAP_MS) {
+    return;
   }
+
+  singleTapPending = false;
+  setStripEnabled(!stripEnabled);
+}
+
+void updateTapInput(unsigned long now, int sensorValue) {
+  if (sensorArmed) {
+    if (sensorValue >= TAP_HIT_THRESHOLD) {
+      sensorArmed = false;
+      tapResetPending = false;
+      lastTapDetectedAt = now;
+
+      handleTapDetected(now, sensorValue);
+    }
+
+    return;
+  }
+
+  if (now - lastTapDetectedAt < TAP_DEBOUNCE_MS) {
+    return;
+  }
+
+  if (sensorValue > TAP_RESET_THRESHOLD) {
+    tapResetPending = false;
+    return;
+  }
+
+  if (!tapResetPending) {
+    tapResetPending = true;
+    tapResetStartedAt = now;
+    return;
+  }
+
+  if (now - tapResetStartedAt < TAP_RESET_STABLE_MS) {
+    return;
+  }
+
+  sensorArmed = true;
+  tapResetPending = false;
+
+  Serial.print("Sensor rearmed, sensor=");
+  Serial.println(sensorValue);
 }
 
 void updateLedAnimation(unsigned long now) {
@@ -104,7 +178,7 @@ void updateLedAnimation(unsigned long now) {
     return;
   }
 
-  nextAnimationFrameAt = now + drawAnimationFrame(selectedAnimation, ledMatrix);
+  nextAnimationFrameAt = now + drawAnimationFrame(currentAnimation(), ledMatrix);
 }
 
 void setup() {
@@ -123,7 +197,13 @@ void setup() {
   Serial.print(" hit threshold=");
   Serial.print(TAP_HIT_THRESHOLD);
   Serial.print(" reset threshold=");
-  Serial.println(TAP_RESET_THRESHOLD);
+  Serial.print(TAP_RESET_THRESHOLD);
+  Serial.print(" debounce ms=");
+  Serial.print(TAP_DEBOUNCE_MS);
+  Serial.print(" reset stable ms=");
+  Serial.print(TAP_RESET_STABLE_MS);
+  Serial.print(" double tap ms=");
+  Serial.println(TAP_DOUBLE_TAP_MS);
   Serial.print("strip pin=");
   Serial.print(LED_STRIP_PIN);
   Serial.print(" matrix=");
@@ -133,7 +213,7 @@ void setup() {
   Serial.print(" count=");
   Serial.println(LED_STRIP_COUNT);
   Serial.print("selected animation=");
-  Serial.println(selectedAnimation.name);
+  Serial.println(currentAnimation().name);
 }
 
 void loop() {
@@ -141,7 +221,8 @@ void loop() {
   const int sensorValue = analogRead(TAP_SENSOR_PIN);
 
   logSensorReading(now, sensorValue);
-  updateTapToggle(sensorValue);
+  updatePendingSingleTap(now);
+  updateTapInput(now, sensorValue);
   updateLedAnimation(now);
 
   delay(2);

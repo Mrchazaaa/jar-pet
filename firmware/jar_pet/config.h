@@ -4,8 +4,11 @@
 #include <Arduino.h>
 
 const int TAP_SENSOR_PIN = A0;
-const int TAP_HIT_THRESHOLD = 300;
+const int TAP_HIT_THRESHOLD = 275;
 const int TAP_RESET_THRESHOLD = 100;
+const unsigned long TAP_DEBOUNCE_MS = 80;
+const unsigned long TAP_RESET_STABLE_MS = 50;
+const unsigned long TAP_DOUBLE_TAP_MS = 350;
 const unsigned long SENSOR_LOG_INTERVAL_MS = 250;
 
 const uint8_t LED_STRIP_PIN = 9;
