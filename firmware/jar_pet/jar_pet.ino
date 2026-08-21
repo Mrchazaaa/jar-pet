@@ -10,6 +10,7 @@
 #include "animations/VerticalSweep.h"
 #include "animations/Face.h"
 #include "animations/HappyFace.h"
+#include "animations/BarbershopPole.h"
 
 Adafruit_NeoPixel onboardPixel(
   STATUS_PIXEL_COUNT,
@@ -24,23 +25,35 @@ Adafruit_NeoPixel ledStrip(
 );
 
 LedMatrix ledMatrix(ledStrip);
+const MatrixAnimation *const Animations[] = {
+  &RainbowAnimation,
+  &HeartAnimation,
+  &DiagonalSweepAnimation,
+  &SparkleAnimation,
+  &VerticalSweepAnimation,
+  &FaceAnimation,
+  &HappyFaceAnimation,
+  &BarbershopPoleAnimation
+};
+const uint8_t AnimationCount = static_cast<uint8_t>(
+  sizeof(Animations) / sizeof(Animations[0])
+);
+uint8_t selectedAnimationIndex = 4;
 
-/**
-* The idle animation is shown when the jar is not being interacted with.
-* Replace FaceAnimation/HappyFaceAnimation with any exported MatrixAnimation to change display.
-*/
-const MatrixAnimation &idleAnimation = FaceAnimation;
-const MatrixAnimation &sensorAnimation = HappyFaceAnimation;
-
-bool sensorArmed = true;
 bool stripEnabled = false;
-bool sensorAnimationActive = false;
+bool sensorArmed = true;
+bool tapResetPending = false;
+bool singleTapPending = false;
 
 unsigned long lastSensorLogAt = 0;
-unsigned long lastMatrixActivityAt = 0;
+unsigned long lastTapDetectedAt = 0;
+unsigned long tapResetStartedAt = 0;
+unsigned long singleTapDetectedAt = 0;
 unsigned long nextAnimationFrameAt = 0;
-unsigned long sensorAnimationEndsAt = 0;
-const MatrixAnimation *activeAnimation = &idleAnimation;
+
+const MatrixAnimation &currentAnimation() {
+  return *Animations[selectedAnimationIndex];
+}
 
 void turnOffOnboardLed() {
   onboardPixel.clear();
@@ -52,10 +65,9 @@ void clearLedMatrix() {
   ledMatrix.show();
 }
 
-void setActiveAnimation(const MatrixAnimation &animation) {
-  activeAnimation = &animation;
+void resetSelectedAnimation() {
   nextAnimationFrameAt = 0;
-  resetAnimation(animation);
+  resetAnimation(currentAnimation());
 }
 
 void logStripState() {
@@ -64,18 +76,15 @@ void logStripState() {
 }
 
 void setStripEnabled(bool enabled) {
-  if (stripEnabled == enabled) {
-    return;
-  }
-
   stripEnabled = enabled;
 
   if (stripEnabled) {
-    setActiveAnimation(idleAnimation);
-    Serial.println("LED strip enabled");
+    resetSelectedAnimation();
+    Serial.print("LED strip enabled, animation=");
+    Serial.println(currentAnimation().name);
   } else {
     clearLedMatrix();
-    Serial.println("LED strip disabled after inactivity");
+    Serial.println("LED strip disabled");
   }
 
   logStripState();
@@ -93,67 +102,87 @@ void logSensorReading(unsigned long now, int sensorValue) {
   Serial.print(" armed=");
   Serial.print(sensorArmed ? "yes" : "no");
   Serial.print(" strip=");
-  Serial.print(stripEnabled ? "on" : "off");
-  Serial.print(" animation=");
-  Serial.println(activeAnimation->name);
+  Serial.println(stripEnabled ? "on" : "off");
 }
 
-void triggerTimedAnimation(unsigned long now, const MatrixAnimation &animation, unsigned long durationMs) {
-  sensorAnimationActive = true;
-  sensorAnimationEndsAt = now + durationMs;
-  setActiveAnimation(animation);
-  Serial.print("Sensor animation active for ms=");
-  Serial.println(durationMs);
+void skipToNextAnimation() {
+  selectedAnimationIndex = (selectedAnimationIndex + 1) % AnimationCount;
+  resetSelectedAnimation();
+
+  Serial.print("Skipped to animation=");
+  Serial.println(currentAnimation().name);
 }
 
-void triggerSensorAnimation(unsigned long now) {
-  lastMatrixActivityAt = now;
-  setStripEnabled(true);
-  triggerTimedAnimation(now, sensorAnimation, SENSOR_ANIMATION_DURATION_MS);
-  Serial.print("Sensor animation=");
-  Serial.println(sensorAnimation.name);
-}
+void handleTapDetected(unsigned long now, int sensorValue) {
+  Serial.print("Tap detected, sensor=");
+  Serial.println(sensorValue);
 
-void updateTapTrigger(unsigned long now, int sensorValue) {
-  if (sensorArmed && sensorValue >= TAP_HIT_THRESHOLD) {
-    sensorArmed = false;
+  if (singleTapPending && now - singleTapDetectedAt <= TAP_DOUBLE_TAP_MS) {
+    singleTapPending = false;
 
-    Serial.print("Tap detected, sensor=");
-    Serial.println(sensorValue);
-
-    triggerSensorAnimation(now);
+    Serial.println("Double tap detected");
+    skipToNextAnimation();
     return;
   }
 
-  if (!sensorArmed && sensorValue <= TAP_RESET_THRESHOLD) {
-    sensorArmed = true;
-
-    Serial.print("Sensor rearmed, sensor=");
-    Serial.println(sensorValue);
-  }
+  singleTapPending = true;
+  singleTapDetectedAt = now;
 }
 
-void updateActiveAnimation(unsigned long now) {
-  if (stripEnabled && !sensorAnimationActive && now - lastMatrixActivityAt >= MATRIX_IDLE_TIMEOUT_MS) {
-    setStripEnabled(false);
+void updatePendingSingleTap(unsigned long now) {
+  if (!singleTapPending || now - singleTapDetectedAt <= TAP_DOUBLE_TAP_MS) {
     return;
   }
 
-  if (!stripEnabled) {
+  singleTapPending = false;
+  setStripEnabled(!stripEnabled);
+}
+
+void updateTapInput(unsigned long now, int sensorValue) {
+  if (sensorArmed) {
+    if (sensorValue >= TAP_HIT_THRESHOLD) {
+      sensorArmed = false;
+      tapResetPending = false;
+      lastTapDetectedAt = now;
+
+      handleTapDetected(now, sensorValue);
+    }
+
     return;
   }
 
-  if (sensorAnimationActive && static_cast<long>(now - sensorAnimationEndsAt) >= 0) {
-    sensorAnimationActive = false;
-    setActiveAnimation(idleAnimation);
-    Serial.println("Returning to idle animation");
-  }
-
-  if (now < nextAnimationFrameAt) {
+  if (now - lastTapDetectedAt < TAP_DEBOUNCE_MS) {
     return;
   }
 
-  nextAnimationFrameAt = now + drawAnimationFrame(*activeAnimation, ledMatrix);
+  if (sensorValue > TAP_RESET_THRESHOLD) {
+    tapResetPending = false;
+    return;
+  }
+
+  if (!tapResetPending) {
+    tapResetPending = true;
+    tapResetStartedAt = now;
+    return;
+  }
+
+  if (now - tapResetStartedAt < TAP_RESET_STABLE_MS) {
+    return;
+  }
+
+  sensorArmed = true;
+  tapResetPending = false;
+
+  Serial.print("Sensor rearmed, sensor=");
+  Serial.println(sensorValue);
+}
+
+void updateLedAnimation(unsigned long now) {
+  if (!stripEnabled || now < nextAnimationFrameAt) {
+    return;
+  }
+
+  nextAnimationFrameAt = now + drawAnimationFrame(currentAnimation(), ledMatrix);
 }
 
 void setup() {
@@ -165,20 +194,20 @@ void setup() {
   turnOffOnboardLed();
 
   ledMatrix.begin(LED_STRIP_BRIGHTNESS);
-  lastMatrixActivityAt = millis();
-  setStripEnabled(true);
 
-  Serial.println("Jar Pet animation controller started");
+  Serial.println("Jar Pet tap LED matrix toggle started");
   Serial.print("tap pin=");
   Serial.print(TAP_SENSOR_PIN);
   Serial.print(" hit threshold=");
   Serial.print(TAP_HIT_THRESHOLD);
   Serial.print(" reset threshold=");
-  Serial.println(TAP_RESET_THRESHOLD);
-  Serial.print(" sensor animation duration ms=");
-  Serial.println(SENSOR_ANIMATION_DURATION_MS);
-  Serial.print(" idle timeout ms=");
-  Serial.println(MATRIX_IDLE_TIMEOUT_MS);
+  Serial.print(TAP_RESET_THRESHOLD);
+  Serial.print(" debounce ms=");
+  Serial.print(TAP_DEBOUNCE_MS);
+  Serial.print(" reset stable ms=");
+  Serial.print(TAP_RESET_STABLE_MS);
+  Serial.print(" double tap ms=");
+  Serial.println(TAP_DOUBLE_TAP_MS);
   Serial.print("strip pin=");
   Serial.print(LED_STRIP_PIN);
   Serial.print(" matrix=");
@@ -187,10 +216,8 @@ void setup() {
   Serial.print(LED_MATRIX_HEIGHT);
   Serial.print(" count=");
   Serial.println(LED_STRIP_COUNT);
-  Serial.print("idle animation=");
-  Serial.println(idleAnimation.name);
-  Serial.print("sensor animation=");
-  Serial.println(sensorAnimation.name);
+  Serial.print("selected animation=");
+  Serial.println(currentAnimation().name);
 }
 
 void loop() {
@@ -198,8 +225,9 @@ void loop() {
   const int sensorValue = analogRead(TAP_SENSOR_PIN);
 
   logSensorReading(now, sensorValue);
-  updateTapTrigger(now, sensorValue);
-  updateActiveAnimation(now);
+  updatePendingSingleTap(now);
+  updateTapInput(now, sensorValue);
+  updateLedAnimation(now);
 
   delay(2);
 }
