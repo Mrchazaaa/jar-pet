@@ -8,6 +8,8 @@
 #include "animations/DiagonalSweep.h"
 #include "animations/Sparkle.h"
 #include "animations/VerticalSweep.h"
+#include "animations/Face.h"
+#include "animations/HappyFace.h"
 #include "animations/BarbershopPole.h"
 
 Adafruit_NeoPixel onboardPixel(
@@ -29,6 +31,8 @@ const MatrixAnimation *const Animations[] = {
   &DiagonalSweepAnimation,
   &SparkleAnimation,
   &VerticalSweepAnimation,
+  &FaceAnimation,
+  &HappyFaceAnimation,
   &BarbershopPoleAnimation
 };
 const uint8_t AnimationCount = static_cast<uint8_t>(
